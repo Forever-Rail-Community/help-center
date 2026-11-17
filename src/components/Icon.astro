@@ -1,0 +1,12 @@
+---
+// A Lucide icon by name. See src/lib/icons.ts.
+import { iconSvg } from '../lib/icons'
+
+interface Props {
+  name: string
+  size?: number
+  class?: string
+}
+const { name, size = 20, class: className } = Astro.props
+---
+<span class:list={['icon-glyph', className]} set:html={iconSvg(name, size)} />

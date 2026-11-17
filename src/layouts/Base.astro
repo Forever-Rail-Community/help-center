@@ -1,0 +1,93 @@
+---
+import '@fontsource-variable/inter'
+import '../styles/global.css'
+import { loadHelp } from '../lib/feed'
+import { logoPath } from '../lib/logo'
+import { siteLinks } from '../lib/links'
+import Search from '../components/Search.astro'
+import ThemeToggle from '../components/ThemeToggle.astro'
+
+interface Props {
+  title?: string // omitted on the home page
+  description: string
+  structuredData?: Record<string, unknown>[] // schema.org JSON-LD for search engines
+  headerSearch?: boolean // the home page has its own large search box
+  noindex?: boolean
+}
+const { title, description, structuredData = [], headerSearch = true, noindex = false } = Astro.props
+
+const help = await loadHelp()
+const logo = await logoPath(help)
+const { nav, discord } = siteLinks(help)
+const siteTitle = `${help.site.name} Help Center`
+const pageTitle = title ? `${title} · ${siteTitle}` : siteTitle
+const canonical = new URL(Astro.url.pathname, Astro.site).toString()
+
+// JSON-LD goes inside a <script>, so "<" is escaped to keep text like "</script>" in an article title harmless.
+const jsonLd = (data: Record<string, unknown>) => JSON.stringify(data).replace(/</g, '\\u003c')
+
+// The dashboard only saves #rrggbb colors; anything else falls back to its default color.
+const brand = /^#[0-9a-f]{6}$/i.test(help.site.brandColor) ? help.site.brandColor : '#2f77a5'
+---
+<!doctype html>
+<html lang="en" style={`--brand: ${brand}`}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{pageTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    {noindex && <meta name="robots" content="noindex" />}
+    <meta property="og:type" content={structuredData.some((d) => d['@type'] === 'Article') ? 'article' : 'website'} />
+    <meta property="og:site_name" content={siteTitle} />
+    <meta property="og:title" content={title ?? siteTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={new URL(logo, Astro.site).toString()} />
+    <link rel="icon" href={logo} />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+    {structuredData.map((d) => <script type="application/ld+json" set:html={jsonLd(d)} />)}
+    <!-- Light or dark before anything draws: the saved choice, otherwise the device setting. -->
+    <script is:inline>
+      try {
+        const saved = localStorage.getItem('theme')
+        const dark = saved ? saved === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches
+        document.documentElement.classList.toggle('dark', dark)
+      } catch {}
+    </script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+      <div class="container top">
+        <a class="brand" href="/">
+          <img src={logo} alt="" width="32" height="32" />
+          <span>{help.site.name} <span class="sub">Help Center</span></span>
+        </a>
+        {headerSearch && <div style="flex: 0 1 360px"><Search /></div>}
+        <div class="header-actions">
+          <ThemeToggle />
+          {discord && <a class="btn btn-primary" href={discord}>Join Discord</a>}
+        </div>
+      </div>
+      <nav class="container site-nav" aria-label={`${help.site.name} sites`}>
+        <a href="/" class="current" aria-current="true">Help Center</a>
+        {nav.map((link) => <a href={link.url}>{link.label}</a>)}
+      </nav>
+    </header>
+
+    <div id="main" style="flex: 1">
+      <slot />
+    </div>
+
+    <footer class="site-footer">
+      <div class="container">
+        <span>{help.site.name} Community</span>
+        <nav aria-label="Footer">
+          {nav.map((link) => <a href={link.url}>{link.label}</a>)}
+          {discord && <a href={discord}>Discord</a>}
+        </nav>
+      </div>
+    </footer>
+  </body>
+</html>

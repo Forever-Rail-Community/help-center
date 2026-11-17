@@ -1,0 +1,142 @@
+---
+// Article search. Pagefind builds the index after `astro build` (see package.json), so search only
+// works on a built site; in `astro dev` it says so instead of failing.
+import Icon from './Icon.astro'
+
+interface Props {
+  hero?: boolean // the large search box on the home page
+}
+const { hero = false } = Astro.props
+const id = hero ? 'search-hero' : 'search-header'
+---
+<form class:list={['search', { hero }]} role="search" data-search action="/" onsubmit="return false">
+  <label for={id} class="visually-hidden">Search the help center</label>
+  <Icon name="search" size={hero ? 18 : 16} class="search-icon" />
+  <input
+    id={id}
+    type="search"
+    autocomplete="off"
+    placeholder="Search articles"
+    role="combobox"
+    aria-expanded="false"
+    aria-controls={`${id}-results`}
+    aria-autocomplete="list"
+  />
+  {hero && <kbd aria-hidden="true">/</kbd>}
+  <ul id={`${id}-results`} class="search-results" role="listbox" aria-label="Search results" hidden></ul>
+</form>
+
+<script>
+  interface PagefindResult {
+    url: string
+    excerpt: string // page text with matches wrapped in <mark>; Pagefind escapes everything else
+    meta: { title?: string }
+  }
+  interface Pagefind {
+    search(query: string): Promise<{ results: { data(): Promise<PagefindResult> }[] } | null>
+  }
+
+  const MAX_RESULTS = 8
+  let pagefind: Promise<Pagefind | null> | undefined
+
+  // Loaded on first use. The path is kept in a variable so the bundler leaves it alone: the file only
+  // exists after Pagefind runs on the built site.
+  function loadPagefind() {
+    const path = '/pagefind/pagefind.js'
+    pagefind ??= import(/* @vite-ignore */ path).catch(() => null)
+    return pagefind
+  }
+
+  const escapeHtml = (text: string) =>
+    text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+
+  function setUp(form: HTMLFormElement) {
+    const input = form.querySelector('input')!
+    const list = form.querySelector<HTMLUListElement>('.search-results')!
+    let links: HTMLAnchorElement[] = []
+    let active = -1
+    let latest = 0
+
+    const open = (show: boolean) => {
+      list.hidden = !show
+      input.setAttribute('aria-expanded', String(show))
+    }
+
+    const highlight = (index: number) => {
+      active = index
+      links.forEach((a, i) => a.setAttribute('aria-selected', String(i === index)))
+      if (index >= 0) {
+        links[index]!.scrollIntoView({ block: 'nearest' })
+        input.setAttribute('aria-activedescendant', links[index]!.id)
+      } else {
+        input.removeAttribute('aria-activedescendant')
+      }
+    }
+
+    const showMessage = (text: string) => {
+      list.innerHTML = `<li class="empty">${escapeHtml(text)}</li>`
+      links = []
+      highlight(-1)
+      open(true)
+    }
+
+    async function run(query: string) {
+      const ticket = ++latest
+      if (!query.trim()) return open(false)
+      const pf = await loadPagefind()
+      if (!pf) return showMessage('Search is available on the built site.')
+      const found = await pf.search(query)
+      const results = await Promise.all((found?.results ?? []).slice(0, MAX_RESULTS).map((r) => r.data()))
+      if (ticket !== latest) return // a newer search has started
+      if (!results.length) return showMessage(`No articles match "${query.trim()}".`)
+
+      list.innerHTML = results
+        .map(
+          (r, i) => `<li role="none"><a role="option" id="${list.id}-${i}" href="${escapeHtml(r.url)}" aria-selected="false">
+            <span class="title">${escapeHtml(r.meta.title ?? r.url)}</span>
+            <span class="excerpt">${r.excerpt}</span></a></li>`
+        )
+        .join('')
+      links = [...list.querySelectorAll('a')]
+      highlight(-1)
+      open(true)
+    }
+
+    let timer: ReturnType<typeof setTimeout> | undefined
+    input.addEventListener('input', () => {
+      clearTimeout(timer)
+      timer = setTimeout(() => run(input.value), 150)
+    })
+    input.addEventListener('focus', () => loadPagefind())
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown' && links.length) {
+        e.preventDefault()
+        highlight((active + 1) % links.length)
+      } else if (e.key === 'ArrowUp' && links.length) {
+        e.preventDefault()
+        highlight(active <= 0 ? links.length - 1 : active - 1)
+      } else if (e.key === 'Enter') {
+        const target = links[active] ?? links[0]
+        if (target) window.location.href = target.href
+      } else if (e.key === 'Escape') {
+        open(false)
+      }
+    })
+    form.addEventListener('focusout', (e) => {
+      if (!form.contains(e.relatedTarget as Node)) open(false)
+    })
+  }
+
+  document.querySelectorAll<HTMLFormElement>('form[data-search]').forEach(setUp)
+
+  // "/" jumps to the search box, unless you're already typing somewhere.
+  document.addEventListener('keydown', (e) => {
+    const target = e.target as HTMLElement
+    if (e.key !== '/' || target.closest('input, textarea, [contenteditable="true"]')) return
+    const input = document.querySelector<HTMLInputElement>('form[data-search] input')
+    if (input) {
+      e.preventDefault()
+      input.focus()
+    }
+  })
+</script>
