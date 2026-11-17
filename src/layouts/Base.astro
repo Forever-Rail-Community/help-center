@@ -1,8 +1,9 @@
 ---
 import '@fontsource-variable/inter'
 import '../styles/global.css'
+import { accentStyle, accents } from '../lib/colors'
 import { loadHelp } from '../lib/feed'
-import { logoPath } from '../lib/logo'
+import { logoPath, siteImage } from '../lib/siteImages'
 import { siteLinks } from '../lib/links'
 import Search from '../components/Search.astro'
 import ThemeToggle from '../components/ThemeToggle.astro'
@@ -12,25 +13,32 @@ interface Props {
   description: string
   structuredData?: Record<string, unknown>[] // schema.org JSON-LD for search engines
   headerSearch?: boolean // the home page has its own large search box
+  heroImage?: boolean // show the home page image (from Appearance) behind the band
   noindex?: boolean
 }
-const { title, description, structuredData = [], headerSearch = true, noindex = false } = Astro.props
+const { title, description, structuredData = [], headerSearch = true, heroImage = false, noindex = false } = Astro.props
 
 const help = await loadHelp()
 const logo = await logoPath(help)
 const { nav, discord } = siteLinks(help)
 const siteTitle = `${help.site.name} Help Center`
+const FOOTER_TOPICS = 6 // how many categories the footer lists
 const pageTitle = title ? `${title} · ${siteTitle}` : siteTitle
 const canonical = new URL(Astro.url.pathname, Astro.site).toString()
 
 // JSON-LD goes inside a <script>, so "<" is escaped to keep text like "</script>" in an article title harmless.
 const jsonLd = (data: Record<string, unknown>) => JSON.stringify(data).replace(/</g, '\\u003c')
 
-// The dashboard only saves #rrggbb colors; anything else falls back to its default color.
-const brand = /^#[0-9a-f]{6}$/i.test(help.site.brandColor) ? help.site.brandColor : '#2f77a5'
+// Accent colors for light and dark mode, with readable shades for text and icons (src/lib/colors.ts).
+// The dashboard only saves #rrggbb colors; anything else falls back to the main color, then its default.
+const mainColor = /^#[0-9a-f]{6}$/i.test(help.site.brandColor) ? help.site.brandColor : '#2f77a5'
+const colorStyle = accentStyle(accents(help.site.helpLightAccent, help.site.helpDarkAccent, mainColor, help.site.helpHeroOverlay))
+
+// The home page image, under the band color (see .band.with-image in global.css). Null when there's none.
+const hero = heroImage ? await siteImage(help, 'hero') : null
 ---
 <!doctype html>
-<html lang="en" style={`--brand: ${brand}`}>
+<html lang="en" style={colorStyle}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -58,32 +66,47 @@ const brand = /^#[0-9a-f]{6}$/i.test(help.site.brandColor) ? help.site.brandColo
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
-    <header class="site-header">
-      <div class="container top">
+    <!-- The colored band: the header on every page, plus the search area on the home page (slot "hero"). -->
+    <div class:list={['band', { 'with-image': hero }]} style={hero ? `--hero-image: url('${hero.path}')` : undefined}>
+      <header class="container site-header">
         <a class="brand" href="/">
           <img src={logo} alt="" width="32" height="32" />
           <span>{help.site.name} <span class="sub">Help Center</span></span>
         </a>
-        {headerSearch && <div style="flex: 0 1 360px"><Search /></div>}
+        <nav class="site-nav" aria-label={`${help.site.name} sites`}>
+          <a href="/" class="current" aria-current="true">Help Center</a>
+          {nav.map((link) => <a href={link.url}>{link.label}</a>)}
+        </nav>
         <div class="header-actions">
+          {headerSearch && <div class="header-search"><Search /></div>}
           <ThemeToggle />
           {discord && <a class="btn btn-primary" href={discord}>Join Discord</a>}
         </div>
-      </div>
-      <nav class="container site-nav" aria-label={`${help.site.name} sites`}>
-        <a href="/" class="current" aria-current="true">Help Center</a>
-        {nav.map((link) => <a href={link.url}>{link.label}</a>)}
-      </nav>
-    </header>
+      </header>
+      <slot name="hero" />
+    </div>
 
     <div id="main" style="flex: 1">
       <slot />
     </div>
 
     <footer class="site-footer">
-      <div class="container">
-        <span>{help.site.name} Community</span>
-        <nav aria-label="Footer">
+      <div class="container footer-grid">
+        <div class="footer-brand">
+          <a class="brand" href="/">
+            <img src={logo} alt="" width="28" height="28" />
+            <span>{help.site.name} <span class="sub">Help Center</span></span>
+          </a>
+          <p>Guides and answers for the {help.site.name} community.</p>
+        </div>
+        {help.categories.length > 0 && (
+          <nav aria-labelledby="footer-topics">
+            <h2 id="footer-topics">Topics</h2>
+            {help.categories.slice(0, FOOTER_TOPICS).map((c) => <a href={c.url}>{c.name}</a>)}
+          </nav>
+        )}
+        <nav aria-labelledby="footer-community">
+          <h2 id="footer-community">{help.site.name}</h2>
           {nav.map((link) => <a href={link.url}>{link.label}</a>)}
           {discord && <a href={discord}>Discord</a>}
         </nav>

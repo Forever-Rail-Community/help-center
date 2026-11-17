@@ -18,7 +18,16 @@ interface FeedArticle {
 }
 
 interface Feed {
-  site: { name: string; logo: string; brandColor: string }
+  // Settings after brandColor are optional: older dashboards don't send them.
+  site: {
+    name: string
+    logo: string
+    brandColor: string
+    helpLightAccent?: string
+    helpDarkAccent?: string
+    helpHeroImage?: string
+    helpHeroOverlay?: number
+  }
   categories: { slug: string; name: string; description: string; icon: string; sortOrder: number }[]
   articles: FeedArticle[]
 }

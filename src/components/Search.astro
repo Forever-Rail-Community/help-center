@@ -9,7 +9,7 @@ interface Props {
 const { hero = false } = Astro.props
 const id = hero ? 'search-hero' : 'search-header'
 ---
-<form class:list={['search', { hero }]} role="search" data-search action="/" onsubmit="return false">
+<form class:list={['search', { 'search-large': hero }]} role="search" data-search action="/" onsubmit="return false">
   <label for={id} class="visually-hidden">Search the help center</label>
   <Icon name="search" size={hero ? 18 : 16} class="search-icon" />
   <input
