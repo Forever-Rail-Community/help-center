@@ -1,5 +1,5 @@
-// Accent colors for light and dark mode, from the dashboard's Admin > Appearance > Help site colors.
-// The chosen color is used as is for tints, borders, and highlights. For text and icons, a darker (light mode)
+// Colors from the dashboard's Admin > Appearance > Help site: the accent (links, icons, highlights in both modes,
+// and the light mode header) and the dark mode header color. The accent is used as is for tints and borders. For text and icons, a darker (light mode)
 // or lighter (dark mode) shade is worked out at build time, so they stay readable whatever color is picked:
 // 4.5:1 contrast for text and 3:1 for icons, the WCAG AA levels.
 
@@ -39,7 +39,7 @@ function readable(color: Rgb, backgrounds: Rgb[], toward: Rgb, ratio: number): s
 }
 
 export interface AccentShades {
-  base: string // the chosen color
+  base: string // the accent color
   text: string // links and colored text
   icon: string // icons and other shapes that carry meaning
   band: string // the colored band behind the header (and the home page search)
@@ -51,14 +51,13 @@ interface Mode {
   background: Rgb // the page background
   readableToward: Rgb // text and icon shades move this way until they read clearly on the background
   bandText: Rgb // text color on the band
-  bandDepth: number // how far the band starts toward the page background (0: the color itself)
+  bandContrast: number // the band shifts toward the page background until its text reaches this contrast
 }
 
-// Light mode: the band is the color itself, with dark text. Dark mode: a deep shade of it, with light text,
-// so it doesn't glare. Either way the band shifts further toward the background if its text would read
-// below 4.5:1.
-const LIGHT: Mode = { background: LIGHT_BACKGROUND, readableToward: [0, 0, 0], bandText: [9, 9, 11], bandDepth: 0 }
-const DARK: Mode = { background: DARK_BACKGROUND, readableToward: [255, 255, 255], bandText: [250, 250, 250], bandDepth: 0.55 }
+// Light mode: dark text on the band, at the usual 4.5:1. Dark mode: light text, and the band is kept deep
+// enough for 7:1 so a bright color doesn't glare at night (an already deep color, like Sapphire, stays as is).
+const LIGHT: Mode = { background: LIGHT_BACKGROUND, readableToward: [0, 0, 0], bandText: [9, 9, 11], bandContrast: TEXT_CONTRAST }
+const DARK: Mode = { background: DARK_BACKGROUND, readableToward: [255, 255, 255], bandText: [250, 250, 250], bandContrast: 7 }
 
 // Over the home page image the band color is laid on top at some strength. The image could be anything, so the
 // strength must keep band text readable over both an all-black and an all-white image (and so over any image).
@@ -77,10 +76,10 @@ function heroOverlay(band: Rgb, bandText: Rgb, requested: number): number {
 // at most 18% strong, so shades are checked against both.
 const STRONGEST_TINT = 0.18
 
-function shades(hex: string, mode: Mode, requestedOverlay: number): AccentShades {
-  const color = toRgb(hex)
+function shades(accentHex: string, bandHex: string, mode: Mode, requestedOverlay: number): AccentShades {
+  const color = toRgb(accentHex)
   const tinted = mix(mode.background, color, STRONGEST_TINT)
-  const band = readable(mix(color, mode.background, mode.bandDepth), [mode.bandText], mode.background, TEXT_CONTRAST)
+  const band = readable(toRgb(bandHex), [mode.bandText], mode.background, mode.bandContrast)
   return {
     base: toHex(color),
     text: readable(color, [mode.background, tinted], mode.readableToward, TEXT_CONTRAST),
@@ -96,10 +95,14 @@ export interface Accents {
   dark: AccentShades
 }
 
+// The dashboard stores the accent as helpLightAccent and the dark mode header as helpDarkAccent.
 // Falls back to `fallback` (the main color) when a setting is missing, for dashboards without these settings yet.
-export function accents(light: string | undefined, dark: string | undefined, fallback: string, heroOverlay = 80): Accents {
+export function accents(accent: string | undefined, darkBand: string | undefined, fallback: string, heroOverlay = 80): Accents {
   const pick = (value: string | undefined) => (value && HEX.test(value) ? value : fallback)
-  return { light: shades(pick(light), LIGHT, heroOverlay), dark: shades(pick(dark), DARK, heroOverlay) }
+  return {
+    light: shades(pick(accent), pick(accent), LIGHT, heroOverlay),
+    dark: shades(pick(accent), pick(darkBand), DARK, heroOverlay)
+  }
 }
 
 // CSS custom properties for <html>, like "--light-accent-text: #8f681f"; global.css uses the light or dark set.
