@@ -18,7 +18,8 @@ interface FeedArticle {
 }
 
 interface Feed {
-  site: { name: string; logo: string; brandColor: string }
+  // The accent colors are optional: older dashboards don't send them, and the main color is used instead.
+  site: { name: string; logo: string; brandColor: string; helpLightAccent?: string; helpDarkAccent?: string }
   categories: { slug: string; name: string; description: string; icon: string; sortOrder: number }[]
   articles: FeedArticle[]
 }

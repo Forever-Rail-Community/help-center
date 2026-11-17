@@ -1,6 +1,7 @@
 ---
 import '@fontsource-variable/inter'
 import '../styles/global.css'
+import { accentStyle, accents } from '../lib/colors'
 import { loadHelp } from '../lib/feed'
 import { logoPath } from '../lib/logo'
 import { siteLinks } from '../lib/links'
@@ -26,11 +27,13 @@ const canonical = new URL(Astro.url.pathname, Astro.site).toString()
 // JSON-LD goes inside a <script>, so "<" is escaped to keep text like "</script>" in an article title harmless.
 const jsonLd = (data: Record<string, unknown>) => JSON.stringify(data).replace(/</g, '\\u003c')
 
-// The dashboard only saves #rrggbb colors; anything else falls back to its default color.
-const brand = /^#[0-9a-f]{6}$/i.test(help.site.brandColor) ? help.site.brandColor : '#2f77a5'
+// Accent colors for light and dark mode, with readable shades for text and icons (src/lib/colors.ts).
+// The dashboard only saves #rrggbb colors; anything else falls back to the main color, then its default.
+const mainColor = /^#[0-9a-f]{6}$/i.test(help.site.brandColor) ? help.site.brandColor : '#2f77a5'
+const colorStyle = accentStyle(accents(help.site.helpLightAccent, help.site.helpDarkAccent, mainColor))
 ---
 <!doctype html>
-<html lang="en" style={`--brand: ${brand}`}>
+<html lang="en" style={colorStyle}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
