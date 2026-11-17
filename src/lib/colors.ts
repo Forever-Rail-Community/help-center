@@ -42,19 +42,36 @@ export interface AccentShades {
   base: string // the chosen color
   text: string // links and colored text
   icon: string // icons and other shapes that carry meaning
+  band: string // the colored band behind the header (and the home page search)
+  bandText: string // text on the band
 }
+
+interface Mode {
+  background: Rgb // the page background
+  readableToward: Rgb // text and icon shades move this way until they read clearly on the background
+  bandText: Rgb // text color on the band
+  bandDepth: number // how far the band starts toward the page background (0: the color itself)
+}
+
+// Light mode: the band is the color itself, with dark text. Dark mode: a deep shade of it, with light text,
+// so it doesn't glare. Either way the band shifts further toward the background if its text would read
+// below 4.5:1.
+const LIGHT: Mode = { background: LIGHT_BACKGROUND, readableToward: [0, 0, 0], bandText: [9, 9, 11], bandDepth: 0 }
+const DARK: Mode = { background: DARK_BACKGROUND, readableToward: [255, 255, 255], bandText: [250, 250, 250], bandDepth: 0.55 }
 
 // Accent text and icons sit on the plain background and on tints of the accent (tags, icon squares),
 // at most 18% strong, so shades are checked against both.
 const STRONGEST_TINT = 0.18
 
-function shades(hex: string, background: Rgb, toward: Rgb): AccentShades {
+function shades(hex: string, mode: Mode): AccentShades {
   const color = toRgb(hex)
-  const tinted = mix(background, color, STRONGEST_TINT)
+  const tinted = mix(mode.background, color, STRONGEST_TINT)
   return {
     base: toHex(color),
-    text: readable(color, [background, tinted], toward, TEXT_CONTRAST),
-    icon: readable(color, [background, tinted], toward, ICON_CONTRAST)
+    text: readable(color, [mode.background, tinted], mode.readableToward, TEXT_CONTRAST),
+    icon: readable(color, [mode.background, tinted], mode.readableToward, ICON_CONTRAST),
+    band: readable(mix(color, mode.background, mode.bandDepth), [mode.bandText], mode.background, TEXT_CONTRAST),
+    bandText: toHex(mode.bandText)
   }
 }
 
@@ -66,16 +83,14 @@ export interface Accents {
 // Falls back to `fallback` (the main color) when a setting is missing, for dashboards without these settings yet.
 export function accents(light: string | undefined, dark: string | undefined, fallback: string): Accents {
   const pick = (value: string | undefined) => (value && HEX.test(value) ? value : fallback)
-  return {
-    light: shades(pick(light), LIGHT_BACKGROUND, [0, 0, 0]),
-    dark: shades(pick(dark), DARK_BACKGROUND, [255, 255, 255])
-  }
+  return { light: shades(pick(light), LIGHT), dark: shades(pick(dark), DARK) }
 }
 
-// CSS custom properties for <html>; global.css uses the light or dark set depending on the mode.
+// CSS custom properties for <html>, like "--light-accent-text: #8f681f"; global.css uses the light or dark set.
 export function accentStyle({ light, dark }: Accents): string {
-  return [
-    `--light-accent: ${light.base}`, `--light-accent-text: ${light.text}`, `--light-accent-icon: ${light.icon}`,
-    `--dark-accent: ${dark.base}`, `--dark-accent-text: ${dark.text}`, `--dark-accent-icon: ${dark.icon}`
-  ].join('; ')
+  const vars = (mode: string, s: AccentShades) => [
+    `--${mode}-accent: ${s.base}`, `--${mode}-accent-text: ${s.text}`, `--${mode}-accent-icon: ${s.icon}`,
+    `--${mode}-band: ${s.band}`, `--${mode}-band-text: ${s.bandText}`
+  ]
+  return [...vars('light', light), ...vars('dark', dark)].join('; ')
 }
