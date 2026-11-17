@@ -1,0 +1,28 @@
+---
+// Every category with its articles. The current category starts open. Built from <details>, so it works without JavaScript.
+import type { Category } from '../lib/feed'
+import Icon from './Icon.astro'
+
+interface Props {
+  categories: Category[]
+  currentCategory?: string
+  currentArticle?: string // the article's URL
+}
+const { categories, currentCategory, currentArticle } = Astro.props
+---
+<nav class="topics" aria-label="All topics">
+  <h2>Topics</h2>
+  {categories.map((c) => (
+    <details open={c.slug === currentCategory}>
+      <summary>
+        <span>{c.name}</span>
+        <Icon name="chevron-right" size={14} class="chevron" />
+      </summary>
+      <ul>
+        {c.articles.map((a) => (
+          <li><a href={a.url} aria-current={a.url === currentArticle ? 'page' : undefined}>{a.title}</a></li>
+        ))}
+      </ul>
+    </details>
+  ))}
+</nav>

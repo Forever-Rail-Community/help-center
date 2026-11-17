@@ -1,0 +1,81 @@
+---
+import type { GetStaticPaths } from 'astro'
+import Base from '../../../layouts/Base.astro'
+import Breadcrumbs from '../../../components/Breadcrumbs.astro'
+import TopicTree from '../../../components/TopicTree.astro'
+import { formatDate, gameName, loadHelp, neighbours, type Article } from '../../../lib/feed'
+import { siteLinks } from '../../../lib/links'
+import { logoPath } from '../../../lib/logo'
+import { articleData, breadcrumbData } from '../../../lib/seo'
+
+export const getStaticPaths = (async () => {
+  const help = await loadHelp()
+  return help.articles.map((article) => ({
+    params: { category: article.category.slug, slug: article.slug },
+    props: { article }
+  }))
+}) satisfies GetStaticPaths
+
+const { article } = Astro.props as { article: Article }
+const help = await loadHelp()
+const { discord } = siteLinks(help)
+const { previous, next } = neighbours(article)
+const more = article.category.articles.filter((a) => a !== article).slice(0, 4)
+const showToc = article.headings.length >= 2
+
+const crumbs = [
+  { label: 'Help Center', url: '/' },
+  { label: article.category.name, url: article.category.url },
+  { label: article.title, url: article.url }
+]
+const structuredData = [articleData(article, help, await logoPath(help), Astro.site!), breadcrumbData(crumbs, Astro.site!)]
+---
+<Base title={article.title} description={article.summary || `${article.title}: a ${help.site.name} help article.`} structuredData={structuredData}>
+  <div class:list={['container', 'page', { 'with-toc': showToc }]}>
+    <TopicTree categories={help.categories} currentCategory={article.category.slug} currentArticle={article.url} />
+
+    <main>
+      <Breadcrumbs items={crumbs.slice(0, 2)} />
+      <article data-pagefind-body>
+        <header class="article-head">
+          <h1 data-pagefind-meta="title">{article.title}</h1>
+          {article.summary && <p class="summary">{article.summary}</p>}
+          <div class="article-meta" data-pagefind-ignore>
+            <span>Written by <strong>{article.authorName}</strong></span>
+            <span aria-hidden="true">·</span>
+            <span>Updated <time datetime={article.updatedAt}>{formatDate(article.updatedAt)}</time></span>
+            {article.game !== 'all' && <span class="tag">{gameName(article.game)}</span>}
+          </div>
+        </header>
+        <div class="prose" set:html={article.html} />
+      </article>
+
+      <div class="after-article">
+        {discord && <p class="help-note">Still need help? <a href={discord}>Ask on Discord</a></p>}
+
+        {more.length > 0 && (
+          <section aria-labelledby="more-heading">
+            <h2 id="more-heading" class="label">More in {article.category.name}</h2>
+            <div class="list">
+              {more.map((a) => <a href={a.url}><span class="title">{a.title}</span></a>)}
+            </div>
+          </section>
+        )}
+
+        {(previous || next) && (
+          <nav class="prev-next" aria-label="Previous and next article">
+            {previous && <a href={previous.url}><small>Previous</small><span>{previous.title}</span></a>}
+            {next && <a class="next" href={next.url}><small>Next</small><span>{next.title}</span></a>}
+          </nav>
+        )}
+      </div>
+    </main>
+
+    {showToc && (
+      <aside class="toc" aria-label="On this page">
+        <h2 class="label" style="font-size: 12px">On this page</h2>
+        {article.headings.map((h) => <a href={`#${h.id}`} class:list={{ sub: h.level === 3 }}>{h.text}</a>)}
+      </aside>
+    )}
+  </div>
+</Base>

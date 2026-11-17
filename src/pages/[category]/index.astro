@@ -1,0 +1,59 @@
+---
+import type { GetStaticPaths } from 'astro'
+import Base from '../../layouts/Base.astro'
+import Breadcrumbs from '../../components/Breadcrumbs.astro'
+import Icon from '../../components/Icon.astro'
+import TopicTree from '../../components/TopicTree.astro'
+import { loadHelp, type Category } from '../../lib/feed'
+import { breadcrumbData } from '../../lib/seo'
+
+export const getStaticPaths = (async () => {
+  const help = await loadHelp()
+  return help.categories.map((category) => ({ params: { category: category.slug }, props: { category } }))
+}) satisfies GetStaticPaths
+
+const { category } = Astro.props as { category: Category }
+const help = await loadHelp()
+const count = category.articles.length
+const crumbs = [{ label: 'Help Center', url: '/' }, { label: category.name, url: category.url }]
+---
+<Base
+  title={category.name}
+  description={category.description || `${category.name} guides for the ${help.site.name} community.`}
+  structuredData={[breadcrumbData(crumbs, Astro.site!)]}
+>
+  <div class="container page">
+    <TopicTree categories={help.categories} currentCategory={category.slug} />
+
+    <main class="stack" style="gap: 36px">
+      <div>
+        <Breadcrumbs items={crumbs} />
+        <div class="category-head">
+          <span class="icon"><Icon name={category.icon} size={24} /></span>
+          <div>
+            <h1>{category.name}</h1>
+            {category.description && <p>{category.description}</p>}
+            <span class="count">{count} {count === 1 ? 'article' : 'articles'}</span>
+          </div>
+        </div>
+      </div>
+
+      {category.sections.map((section) => (
+        <section aria-label={section.name || category.name}>
+          {section.name && <h2 class="label">{section.name}</h2>}
+          <div class="rows">
+            {section.articles.map((a) => (
+              <a href={a.url}>
+                <span style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+                  <span class="title">{a.title}</span>
+                  {a.summary && <span class="summary">{a.summary}</span>}
+                </span>
+                <Icon name="chevron-right" size={16} class="chevron" />
+              </a>
+            ))}
+          </div>
+        </section>
+      ))}
+    </main>
+  </div>
+</Base>
