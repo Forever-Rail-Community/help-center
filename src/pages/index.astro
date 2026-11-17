@@ -13,7 +13,7 @@ const recent = recentlyUpdated(help, 6)
 const games = [...new Set(help.articles.map((a) => a.game).filter((g) => g !== 'all'))]
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
 ---
-<Base description={`Guides and answers for the ${help.site.name} community: getting started, Run8, Railroader, the dashboard, and community rules.`} headerSearch={false}>
+<Base description={`Guides and answers for the ${help.site.name} community: getting started, Run8, Railroader, the dashboard, and community rules.`} headerSearch={false} heroImage>
   <section class="hero" slot="hero">
     <h1>How can we help?</h1>
     <p>Guides for {help.site.name}: the games, the dashboard, and how we run sessions.</p>

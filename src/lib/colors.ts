@@ -44,6 +44,7 @@ export interface AccentShades {
   icon: string // icons and other shapes that carry meaning
   band: string // the colored band behind the header (and the home page search)
   bandText: string // text on the band
+  heroOverlay: number // how strongly the band color covers the home page image, in percent
 }
 
 interface Mode {
@@ -59,19 +60,34 @@ interface Mode {
 const LIGHT: Mode = { background: LIGHT_BACKGROUND, readableToward: [0, 0, 0], bandText: [9, 9, 11], bandDepth: 0 }
 const DARK: Mode = { background: DARK_BACKGROUND, readableToward: [255, 255, 255], bandText: [250, 250, 250], bandDepth: 0.55 }
 
+// Over the home page image the band color is laid on top at some strength. The image could be anything, so the
+// strength must keep band text readable over both an all-black and an all-white image (and so over any image).
+const WORST_IMAGES: Rgb[] = [[0, 0, 0], [255, 255, 255]]
+
+// The requested strength (0 to 100), raised to the weakest one that keeps band text at 4.5:1 over any image.
+function heroOverlay(band: Rgb, bandText: Rgb, requested: number): number {
+  for (let percent = Math.max(0, Math.min(100, Math.round(requested))); percent < 100; percent++) {
+    const covered = WORST_IMAGES.map((image) => toRgb(toHex(mix(image, band, percent / 100))))
+    if (covered.every((bg) => contrast(bg, bandText) >= TEXT_CONTRAST)) return percent
+  }
+  return 100
+}
+
 // Accent text and icons sit on the plain background and on tints of the accent (tags, icon squares),
 // at most 18% strong, so shades are checked against both.
 const STRONGEST_TINT = 0.18
 
-function shades(hex: string, mode: Mode): AccentShades {
+function shades(hex: string, mode: Mode, requestedOverlay: number): AccentShades {
   const color = toRgb(hex)
   const tinted = mix(mode.background, color, STRONGEST_TINT)
+  const band = readable(mix(color, mode.background, mode.bandDepth), [mode.bandText], mode.background, TEXT_CONTRAST)
   return {
     base: toHex(color),
     text: readable(color, [mode.background, tinted], mode.readableToward, TEXT_CONTRAST),
     icon: readable(color, [mode.background, tinted], mode.readableToward, ICON_CONTRAST),
-    band: readable(mix(color, mode.background, mode.bandDepth), [mode.bandText], mode.background, TEXT_CONTRAST),
-    bandText: toHex(mode.bandText)
+    band,
+    bandText: toHex(mode.bandText),
+    heroOverlay: heroOverlay(toRgb(band), mode.bandText, requestedOverlay)
   }
 }
 
@@ -81,16 +97,16 @@ export interface Accents {
 }
 
 // Falls back to `fallback` (the main color) when a setting is missing, for dashboards without these settings yet.
-export function accents(light: string | undefined, dark: string | undefined, fallback: string): Accents {
+export function accents(light: string | undefined, dark: string | undefined, fallback: string, heroOverlay = 80): Accents {
   const pick = (value: string | undefined) => (value && HEX.test(value) ? value : fallback)
-  return { light: shades(pick(light), LIGHT), dark: shades(pick(dark), DARK) }
+  return { light: shades(pick(light), LIGHT, heroOverlay), dark: shades(pick(dark), DARK, heroOverlay) }
 }
 
 // CSS custom properties for <html>, like "--light-accent-text: #8f681f"; global.css uses the light or dark set.
 export function accentStyle({ light, dark }: Accents): string {
   const vars = (mode: string, s: AccentShades) => [
     `--${mode}-accent: ${s.base}`, `--${mode}-accent-text: ${s.text}`, `--${mode}-accent-icon: ${s.icon}`,
-    `--${mode}-band: ${s.band}`, `--${mode}-band-text: ${s.bandText}`
+    `--${mode}-band: ${s.band}`, `--${mode}-band-text: ${s.bandText}`, `--${mode}-hero-overlay: ${s.heroOverlay}%`
   ]
   return [...vars('light', light), ...vars('dark', dark)].join('; ')
 }

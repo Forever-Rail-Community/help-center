@@ -3,7 +3,7 @@ import '@fontsource-variable/inter'
 import '../styles/global.css'
 import { accentStyle, accents } from '../lib/colors'
 import { loadHelp } from '../lib/feed'
-import { logoPath } from '../lib/logo'
+import { logoPath, siteImage } from '../lib/siteImages'
 import { siteLinks } from '../lib/links'
 import Search from '../components/Search.astro'
 import ThemeToggle from '../components/ThemeToggle.astro'
@@ -13,9 +13,10 @@ interface Props {
   description: string
   structuredData?: Record<string, unknown>[] // schema.org JSON-LD for search engines
   headerSearch?: boolean // the home page has its own large search box
+  heroImage?: boolean // show the home page image (from Appearance) behind the band
   noindex?: boolean
 }
-const { title, description, structuredData = [], headerSearch = true, noindex = false } = Astro.props
+const { title, description, structuredData = [], headerSearch = true, heroImage = false, noindex = false } = Astro.props
 
 const help = await loadHelp()
 const logo = await logoPath(help)
@@ -31,7 +32,10 @@ const jsonLd = (data: Record<string, unknown>) => JSON.stringify(data).replace(/
 // Accent colors for light and dark mode, with readable shades for text and icons (src/lib/colors.ts).
 // The dashboard only saves #rrggbb colors; anything else falls back to the main color, then its default.
 const mainColor = /^#[0-9a-f]{6}$/i.test(help.site.brandColor) ? help.site.brandColor : '#2f77a5'
-const colorStyle = accentStyle(accents(help.site.helpLightAccent, help.site.helpDarkAccent, mainColor))
+const colorStyle = accentStyle(accents(help.site.helpLightAccent, help.site.helpDarkAccent, mainColor, help.site.helpHeroOverlay))
+
+// The home page image, under the band color (see .band.with-image in global.css). Null when there's none.
+const hero = heroImage ? await siteImage(help, 'hero') : null
 ---
 <!doctype html>
 <html lang="en" style={colorStyle}>
@@ -63,7 +67,7 @@ const colorStyle = accentStyle(accents(help.site.helpLightAccent, help.site.help
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
     <!-- The colored band: the header on every page, plus the search area on the home page (slot "hero"). -->
-    <div class="band">
+    <div class:list={['band', { 'with-image': hero }]} style={hero ? `--hero-image: url('${hero.path}')` : undefined}>
       <header class="container site-header">
         <a class="brand" href="/">
           <img src={logo} alt="" width="32" height="32" />
