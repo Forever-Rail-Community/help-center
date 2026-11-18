@@ -1,0 +1,66 @@
+---
+// The status page's overall status in the header; hovering or focusing it lists each group's main components.
+// Live from the status page's summary, refreshed every minute. Stays hidden until the first answer.
+import { summaryUrl } from '../lib/status'
+
+interface Props {
+  statusPage: string
+}
+const { statusPage } = Astro.props
+---
+<div class="status-widget" data-status-widget={summaryUrl(statusPage)} hidden>
+  <a class="status-pill" href={statusPage}>
+    <span class="status-dot" data-dot aria-hidden="true"></span>
+    <span class="status-label" data-label aria-hidden="true"></span>
+    <span class="visually-hidden" data-spoken></span>
+  </a>
+  <div class="status-card">
+    <p class="status-card-title" data-overall></p>
+    <p class="status-card-note" data-failed hidden>Couldn't reach the status page just now.</p>
+    <div data-groups></div>
+    <a class="status-card-link" href={statusPage}>Open the status page →</a>
+  </div>
+</div>
+
+<script>
+  import { repeat } from '../lib/live'
+  import { LABEL, OVERALL, STATUS_REFRESH_MS, dot, level, loadSummary } from '../lib/status'
+
+  for (const widget of document.querySelectorAll<HTMLElement>('[data-status-widget]')) {
+    const part = <T extends HTMLElement>(name: string) => widget.querySelector<T>(`[data-${name}]`)!
+
+    const show = async () => {
+      const summary = await loadSummary(widget.dataset.statusWidget!)
+      const overall = summary ? level(summary.overall) : 'unknown'
+      part('dot').dataset.level = overall
+      // Something wrong pulses, so it's noticed; all well, paused, or unknown stays still.
+      part('dot').classList.toggle('alerting', !['operational', 'paused', 'unknown'].includes(overall))
+      part('label').textContent = LABEL[overall]
+      part('spoken').textContent = `Status: ${OVERALL[overall]}. Opens the status page.`
+      part('overall').textContent = OVERALL[overall]
+      part('failed').hidden = summary !== null
+
+      // Built with text nodes only: the names come from another site.
+      const groups = (summary?.groups ?? []).map((group) => {
+        const section = document.createElement('div')
+        section.className = 'status-group'
+        const name = document.createElement('p')
+        name.textContent = group.name
+        section.append(name)
+        for (const c of group.components) {
+          const row = document.createElement('div')
+          const label = document.createElement('span')
+          label.append(dot(c.status), c.name)
+          const state = document.createElement('span')
+          state.textContent = LABEL[level(c.status)]
+          row.append(label, state)
+          section.append(row)
+        }
+        return section
+      })
+      part('groups').replaceChildren(...groups)
+      widget.hidden = false
+    }
+    repeat(show, STATUS_REFRESH_MS)
+  }
+</script>

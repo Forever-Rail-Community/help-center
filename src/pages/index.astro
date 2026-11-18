@@ -2,12 +2,13 @@
 import Base from '../layouts/Base.astro'
 import Icon from '../components/Icon.astro'
 import Search from '../components/Search.astro'
-import { formatDate, gameName, loadHelp, recentlyUpdated } from '../lib/feed'
+import { featured, formatDate, gameName, loadHelp, recentlyUpdated } from '../lib/feed'
 import { siteLinks } from '../lib/links'
 
 const help = await loadHelp()
 const { discord, status } = siteLinks(help)
 const recent = recentlyUpdated(help, 6)
+const picks = featured(help)
 
 // The game buttons only list games that have their own articles.
 const games = [...new Set(help.articles.map((a) => a.game).filter((g) => g !== 'all'))]
@@ -32,6 +33,22 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
       <div class="empty-state">Articles are on their way. Check back soon.</div>
     ) : (
       <>
+        {picks.length > 0 && (
+          <section aria-labelledby="featured-heading">
+            <h2 id="featured-heading" class="section-title">Featured</h2>
+            <div class="featured" data-game-list>
+              {picks.map((a) => (
+                <a class="card featured-card" href={a.url} data-game={a.game}>
+                  <span class="eyebrow"><Icon name="star" size={14} /> {a.category.name}</span>
+                  <span class="name">{a.title}</span>
+                  {a.summary && <span class="desc">{a.summary}</span>}
+                  <span class="count">Read article →</span>
+                </a>
+              ))}
+            </div>
+          </section>
+        )}
+
         <section aria-labelledby="topics-heading">
           <h2 id="topics-heading" class="section-title">Browse by topic</h2>
           <div class="cards">

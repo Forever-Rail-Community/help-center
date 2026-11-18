@@ -1,0 +1,47 @@
+---
+// A notice above the header for each incident happening now, with its impact, status, and a link to it on the
+// status page. Live from the status page's summary, so it appears and clears without the site rebuilding.
+import { summaryUrl } from '../lib/status'
+
+interface Props {
+  statusPage: string
+}
+const { statusPage } = Astro.props
+---
+<div class="incident-notices" data-incident-notices={summaryUrl(statusPage)} role="status" hidden></div>
+
+<script>
+  import { repeat } from '../lib/live'
+  import { IMPACT, INCIDENT_STATUS, STATUS_REFRESH_MS, dot, liveIncidents, loadSummary } from '../lib/status'
+
+  for (const box of document.querySelectorAll<HTMLElement>('[data-incident-notices]')) {
+    const show = async () => {
+      const summary = await loadSummary(box.dataset.incidentNotices!)
+      // Built with text nodes only: titles come from another site.
+      const notices = liveIncidents(summary).map((incident) => {
+        const notice = document.createElement('div')
+        notice.className = 'incident-notice'
+        notice.dataset.level = incident.impact
+        const inner = document.createElement('div')
+        inner.className = 'container'
+        const impact = document.createElement('strong')
+        impact.textContent = IMPACT[incident.impact] ?? 'Incident'
+        const state = document.createElement('span')
+        state.className = 'incident-status'
+        state.textContent = INCIDENT_STATUS[incident.status] ?? incident.status
+        const title = document.createElement('span')
+        title.className = 'incident-title'
+        title.textContent = incident.title
+        const link = document.createElement('a')
+        link.href = incident.url
+        link.textContent = 'View incident →'
+        inner.append(dot(incident.impact), impact, state, title, link)
+        notice.append(inner)
+        return notice
+      })
+      box.replaceChildren(...notices)
+      box.hidden = notices.length === 0
+    }
+    repeat(show, STATUS_REFRESH_MS)
+  }
+</script>

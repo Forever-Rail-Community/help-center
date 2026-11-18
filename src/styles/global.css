@@ -76,6 +76,8 @@ a:hover { text-decoration: underline; }
 img { max-width: 100%; }
 :focus-visible { outline: 2px solid var(--accent-icon); outline-offset: 2px; border-radius: 4px; }
 
+/* The hidden attribute wins over any display set below (cards, rows, and live widgets hide this way). */
+[hidden] { display: none !important; }
 .container { width: 100%; max-width: 1280px; margin: 0 auto; padding: 0 24px; }
 .icon-glyph { display: inline-flex; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
@@ -92,6 +94,52 @@ img { max-width: 100%; }
 .btn-primary { background: var(--primary-bg); color: var(--primary-fg); border-color: var(--primary-bg); }
 .btn-primary:hover { background: var(--primary-bg); opacity: 0.9; }
 .icon-btn { width: 40px; padding: 0; }
+
+/* Header status widget: the status page's overall status, and on hover or focus a card of its components.
+   Dot colors match the status page; the incident notices use the same ones. */
+:where(.status-dot, .incident-notice) { --st: var(--faint); }
+:where(.status-dot, .incident-notice)[data-level='operational'] { --st: #10b981; }
+:where(.status-dot, .incident-notice)[data-level='degraded'] { --st: #f59e0b; }
+:where(.status-dot, .incident-notice)[data-level='partial_outage'] { --st: #f97316; }
+:where(.status-dot, .incident-notice)[data-level='major_outage'] { --st: #ef4444; }
+:where(.status-dot, .incident-notice)[data-level='maintenance'] { --st: #0ea5e9; }
+.status-dot { position: relative; flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--st); }
+.status-dot.alerting::after { content: ''; position: absolute; inset: 0; border-radius: 50%; background: inherit; animation: status-ping 1.6s ease-out infinite; }
+@keyframes status-ping { 75%, 100% { transform: scale(2.4); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .status-dot.alerting::after { display: none; } }
+.status-widget { position: relative; }
+.status-pill { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px; border-radius: 8px; font-size: 14px; font-weight: 500; color: inherit; }
+/* A ring in the card color keeps the dot visible on any header color (an orange dot on the orange band). */
+.status-pill .status-dot { box-shadow: 0 0 0 2px var(--card); }
+.status-pill:hover { text-decoration: none; background: color-mix(in srgb, var(--band-text) 10%, transparent); }
+.status-card {
+  display: none; position: absolute; right: 0; top: calc(100% + 6px); z-index: 40; width: 288px; padding: 14px;
+  border: 1px solid var(--border); border-radius: 12px; background: var(--card); color: var(--fg); font-size: 14px;
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.15);
+}
+.status-card::before { content: ''; position: absolute; left: 0; right: 0; top: -8px; height: 8px; } /* keeps hover across the gap */
+.status-widget:hover .status-card, .status-widget:focus-within .status-card { display: block; }
+.status-card-title { margin: 0; font-weight: 600; }
+.status-card-note { margin: 4px 0 0; font-size: 12px; color: var(--muted); }
+.status-group { display: grid; gap: 6px; margin-top: 12px; }
+.status-group p { margin: 0; font-size: 12px; color: var(--muted); }
+.status-group div { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.status-group div span:first-child { display: flex; align-items: center; gap: 8px; }
+.status-group div span:last-child { font-size: 12px; color: var(--muted); }
+.status-group .status-dot { width: 8px; height: 8px; }
+.status-card-link { display: block; margin-top: 14px; font-weight: 500; color: var(--fg); }
+@media (max-width: 760px) { .status-label { display: none; } .status-pill { padding: 0 10px; } }
+
+/* Incidents happening now, above the header. */
+.incident-notice { background: color-mix(in srgb, var(--st) 14%, var(--bg)); border-bottom: 1px solid color-mix(in srgb, var(--st) 35%, transparent); color: var(--fg); font-size: 14px; }
+.incident-notice .container { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding-top: 10px; padding-bottom: 10px; }
+.incident-status { padding: 1px 8px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--st) 45%, transparent); font-size: 12px; font-weight: 500; }
+.incident-title { color: var(--fg2); }
+.incident-notice a { margin-left: auto; font-weight: 500; color: var(--fg); }
+
+/* "Join Discord" with the online count. */
+.discord-btn .online { display: inline-flex; align-items: center; gap: 6px; padding-left: 10px; border-left: 1px solid color-mix(in srgb, currentColor 25%, transparent); font-weight: 400; }
+.online-dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 0 3px color-mix(in srgb, #22c55e 25%, transparent); }
 
 /* The colored band: header on every page, plus the search area on the home page */
 .band { background: var(--band); color: var(--band-text); }
@@ -121,7 +169,7 @@ img { max-width: 100%; }
 
 /* Theme toggle shows the icon for the mode you'd switch to. */
 .theme-toggle .sun { display: none; }
-.dark .theme-toggle .sun { display: block; }
+.dark .theme-toggle .sun { display: inline-flex; }
 .dark .theme-toggle .moon { display: none; }
 
 /* Search */
@@ -143,7 +191,6 @@ img { max-width: 100%; }
   background: var(--card); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 10px 30px rgb(0 0 0 / 0.12);
   max-height: min(70vh, 480px); overflow-y: auto; text-align: left;
 }
-.search-results[hidden] { display: none; }
 .search-results a { display: block; padding: 10px 12px; border-radius: 6px; }
 .search-results a:hover, .search-results a[aria-selected='true'] { background: var(--active); text-decoration: none; }
 .search-results .title { display: block; font-size: 14px; font-weight: 500; color: var(--fg); }
@@ -211,8 +258,21 @@ img { max-width: 100%; }
 .card .desc { font-size: 14px; line-height: 1.5; color: var(--muted); }
 .card .count { font-size: 13px; color: var(--faint); margin-top: auto; padding-top: 6px; }
 
-.home-columns { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 32px; align-items: start; }
-@media (max-width: 860px) { .home-columns { grid-template-columns: minmax(0, 1fr); } }
+.featured { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+.featured-card { border-color: var(--accent-line); background: linear-gradient(var(--accent-soft), transparent 70%), var(--card); }
+.featured-card .eyebrow { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; color: var(--accent-text); }
+.featured-card .count { color: var(--accent-text); font-weight: 500; }
+
+/* Recently updated beside "Still need help?". The card lines up with the list, not its heading: the section's
+   heading and list share the grid's two rows (subgrid), and the card sits in the second. */
+.home-columns { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 32px; align-items: start; }
+.home-columns > section { grid-column: 1; grid-row: 1 / span 2; display: grid; grid-template-rows: subgrid; }
+.home-columns > .help-card { grid-column: 2; grid-row: 2; }
+@media (max-width: 860px) {
+  .home-columns { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; row-gap: 32px; }
+  .home-columns > section, .home-columns > .help-card { grid-column: auto; grid-row: auto; }
+  .home-columns > section { display: block; }
+}
 .help-card { display: flex; flex-direction: column; gap: 10px; padding: 24px; border-radius: 14px; border: 1px solid var(--accent-line); background: var(--accent-soft); }
 .help-card .icon { width: 40px; height: 40px; border-radius: 10px; background: var(--card); color: var(--accent-icon); display: flex; align-items: center; justify-content: center; }
 .help-card h2 { margin: 6px 0 0; font-size: 18px; }
@@ -221,7 +281,6 @@ img { max-width: 100%; }
 
 .rows { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--card); }
 .rows a { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 18px; border-top: 1px solid var(--border); margin-top: -1px; }
-.rows [hidden] { display: none; }
 .rows a:hover { text-decoration: none; background: var(--active); }
 .rows .title { font-size: 15px; font-weight: 500; color: var(--fg); }
 .rows .summary { font-size: 14px; line-height: 1.5; color: var(--muted); }
