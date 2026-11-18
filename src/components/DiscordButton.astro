@@ -1,0 +1,35 @@
+---
+// "Join Discord", with a green dot and how many members are online once the dashboard reports it. The count
+// comes from the dashboard's /api/public/discord (Discord's server widget), refreshed every few minutes.
+interface Props {
+  href: string
+  countUrl: string
+}
+const { href, countUrl } = Astro.props
+---
+<a class="btn btn-primary discord-btn" href={href} data-discord-count={countUrl}>
+  Join Discord
+  <span class="online" data-online hidden>
+    <span class="online-dot" aria-hidden="true"></span>
+    <span data-count></span>
+  </span>
+</a>
+
+<script>
+  import { fetchJson, repeat } from '../lib/live'
+
+  // The dashboard caches the count for 5 minutes, so asking more often gains nothing.
+  const REFRESH_MS = 5 * 60_000
+  const format = new Intl.NumberFormat()
+
+  for (const button of document.querySelectorAll<HTMLElement>('[data-discord-count]')) {
+    const online = button.querySelector<HTMLElement>('[data-online]')!
+    const show = async () => {
+      const data = await fetchJson<{ online: number }>(button.dataset.discordCount!, REFRESH_MS)
+      const count = typeof data?.online === 'number' && data.online > 0 ? data.online : null
+      online.hidden = count === null
+      if (count !== null) online.querySelector('[data-count]')!.textContent = `${format.format(count)} online`
+    }
+    repeat(show, REFRESH_MS)
+  }
+</script>

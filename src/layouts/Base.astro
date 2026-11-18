@@ -5,7 +5,10 @@ import { accentStyle, accents } from '../lib/colors'
 import { loadHelp } from '../lib/feed'
 import { logoPath, siteImage } from '../lib/siteImages'
 import { siteLinks } from '../lib/links'
+import DiscordButton from '../components/DiscordButton.astro'
+import IncidentNotice from '../components/IncidentNotice.astro'
 import Search from '../components/Search.astro'
+import StatusWidget from '../components/StatusWidget.astro'
 import ThemeToggle from '../components/ThemeToggle.astro'
 
 interface Props {
@@ -20,7 +23,7 @@ const { title, description, structuredData = [], headerSearch = true, heroImage 
 
 const help = await loadHelp()
 const logo = await logoPath(help)
-const { nav, discord } = siteLinks(help)
+const { nav, discord, status } = siteLinks(help)
 const siteTitle = `${help.site.name} Help Center`
 const FOOTER_TOPICS = 6 // how many categories the footer lists
 const pageTitle = title ? `${title} · ${siteTitle}` : siteTitle
@@ -66,6 +69,7 @@ const hero = heroImage ? await siteImage(help, 'hero') : null
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
+    {status && <IncidentNotice statusPage={status} />}
     <!-- The colored band: the header on every page, plus the search area on the home page (slot "hero"). -->
     <div class:list={['band', { 'with-image': hero }]} style={hero ? `--hero-image: url('${hero.path}')` : undefined}>
       <header class="container site-header">
@@ -79,8 +83,9 @@ const hero = heroImage ? await siteImage(help, 'hero') : null
         </nav>
         <div class="header-actions">
           {headerSearch && <div class="header-search"><Search /></div>}
+          {status && <StatusWidget statusPage={status} />}
           <ThemeToggle />
-          {discord && <a class="btn btn-primary" href={discord}>Join Discord</a>}
+          {discord && <DiscordButton href={discord} countUrl={new URL('/api/public/discord', help.feedUrl).toString()} />}
         </div>
       </header>
       <slot name="hero" />

@@ -15,6 +15,7 @@ interface FeedArticle {
   body: unknown
   authorName: string
   updatedAt: string
+  featuredAt?: string | null // featured on the home page since then; missing from dashboards older than this site
 }
 
 interface Feed {
@@ -123,6 +124,10 @@ export function neighbours(article: Article) {
   const i = list.indexOf(article)
   return { previous: list[i - 1], next: list[i + 1] }
 }
+
+// Articles featured on the home page, longest featured first.
+export const featured = (help: Help) =>
+  help.articles.filter((a) => a.featuredAt).sort((a, b) => a.featuredAt!.localeCompare(b.featuredAt!))
 
 // The most recently updated articles, newest first.
 export const recentlyUpdated = (help: Help, count: number) =>
