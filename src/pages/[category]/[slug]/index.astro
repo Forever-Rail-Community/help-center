@@ -18,7 +18,7 @@ export const getStaticPaths = (async () => {
 
 const { article } = Astro.props as { article: Article }
 const help = await loadHelp()
-const { discord } = siteLinks(help)
+const { discord, contact } = siteLinks(help)
 const { previous, next } = neighbours(article)
 const more = article.category.articles.filter((a) => a !== article).slice(0, 4)
 const showToc = article.headings.length >= 2
@@ -51,7 +51,7 @@ const structuredData = [articleData(article, help, await logoPath(help), Astro.s
       </article>
 
       <div class="after-article">
-        {discord && <p class="help-note">Still need help? <a href={discord}>Ask on Discord</a></p>}
+        <p class="help-note">Still need help? <a href={contact}>Submit a ticket</a>{discord && <> or <a href={discord}>ask on Discord</a></>}.</p>
 
         {more.length > 0 && (
           <section aria-labelledby="more-heading">

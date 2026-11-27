@@ -6,7 +6,7 @@ import { featured, formatDate, gameName, loadHelp, recentlyUpdated } from '../li
 import { siteLinks } from '../lib/links'
 
 const help = await loadHelp()
-const { discord, status } = siteLinks(help)
+const { discord, status, contact } = siteLinks(help)
 const recent = recentlyUpdated(help, 6)
 const picks = featured(help)
 
@@ -79,22 +79,21 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
             </div>
           </section>
 
-          {(discord || status) && (
-            <aside class="help-card" aria-labelledby="still-heading">
-              <span class="icon"><Icon name="life-buoy" /></span>
-              <h2 id="still-heading">Still need help?</h2>
-              <p>
-                {[
-                  discord && 'Ask in the help channel on our Discord and staff will get back to you.',
-                  status && 'If something seems down, check the status page first.'
-                ].filter(Boolean).join(' ')}
-              </p>
-              <div class="actions">
-                {discord && <a class="btn btn-primary" href={discord}>Ask on Discord</a>}
-                {status && <a class="btn" href={status}>View status</a>}
-              </div>
-            </aside>
-          )}
+          <aside class="help-card" aria-labelledby="still-heading">
+            <span class="icon"><Icon name="life-buoy" /></span>
+            <h2 id="still-heading">Still need help?</h2>
+            <p>
+              {[
+                'Submit a ticket and a staff member will follow up in the Operations Center.',
+                status && 'If something seems down, check the status page first.'
+              ].filter(Boolean).join(' ')}
+            </p>
+            <div class="actions">
+              <a class="btn btn-primary" href={contact}>Submit a ticket</a>
+              {discord && <a class="btn" href={discord}>Ask on Discord</a>}
+              {status && <a class="btn" href={status}>View status</a>}
+            </div>
+          </aside>
         </div>
       </>
     )}
