@@ -1,7 +1,7 @@
 import type { Help } from './feed'
 
 // Links to the community's other sites, shown in the header and footer. Each is optional except the
-// dashboard, which defaults to the address the feed comes from.
+// dashboard, which defaults to the address the feed comes from. Tickets are opened on the dashboard.
 export interface SiteLink {
   label: string
   url: string
@@ -17,5 +17,6 @@ export function siteLinks(help: Help) {
     { label: 'Dashboard', url: dashboard },
     ...(status ? [{ label: 'Status', url: status }] : [])
   ]
-  return { nav, status, discord }
+  const contact = new URL('/tickets/new', dashboard).toString()
+  return { nav, status, discord, contact }
 }
